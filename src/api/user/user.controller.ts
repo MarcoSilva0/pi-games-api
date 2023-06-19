@@ -1,9 +1,10 @@
-import { Controller, Post, Get, Body, Res, Req } from '@nestjs/common';
-import { BadRequestException, UnauthorizedException } from '@nestjs/common/exceptions';
+import { Controller, Post, Get, Body, Res, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common/exceptions';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UserService } from './user.service';
-import { Response, Request } from 'express';
+import { Response } from 'express';
+import { AuthGuard } from './user.guard';
 
 @Controller('user')
 export class UserController {
@@ -13,39 +14,19 @@ export class UserController {
         ){
     }
 
+    @UseGuards(AuthGuard)
     @Get()
-    async user(
-        @Req() request: Request,
-        @Res() response: Response 
-        ){
-        const token = request.headers.authorization;
-        const cookie = request.cookies['jwt'];
-
-        if(token || cookie){
-            
-            const userToken = token.split(" ")[1]; 
-
-            try {
-                const data = cookie ? await this.jwtService.verifyAsync(cookie) : await this.jwtService.verifyAsync(userToken);
-    
-                if(!data)
-                    throw new UnauthorizedException();
+    async user( @Res() response: Response ) {
+        const users = await this.userService.findAll();
         
-                const users = await this.userService.findAll();
-    
-                users.map(function(element){
-                    return delete element.password;
-                });
-              
-                response.status(200).json({
-                    message: 'User list retrieved successfully',
-                    list: users
-                });
-                
-            } catch (error) {
-                throw new UnauthorizedException();
-            }
-        }
+        users.map(function(element){
+            return delete element.password;
+        });
+
+        response.status(200).json({
+            message: 'User list retrieved successfully',
+            list: users
+        });        
     }
 
     @Post('register')
